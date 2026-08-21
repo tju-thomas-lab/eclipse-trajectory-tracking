@@ -1,0 +1,25 @@
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+dist/
+build/
+*.egg-info/
+.env
+
+# Clinical recordings and derived artifacts must never be committed.
+*.mp4
+*.mkv
+*.mov
+*.avi
+input/*
+!input/README.md
+output/*
+!output/README.md
+models/*
+!models/README.md
+

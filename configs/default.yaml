@@ -1,0 +1,23 @@
+version: "0.1.0"
+sampling:
+  frames_per_second: 2.0
+  analysis_width: 384
+windows:
+  duration_seconds: 5.0
+  stride_seconds: 2.5
+detection:
+  change_threshold: 0.035
+  pixel_threshold: 18
+  event_merge_gap_seconds: 1.25
+  event_padding_seconds: 0.5
+  event_max_duration_seconds: 5.0
+evidence:
+  max_dimension: 1280
+  image_format: jpeg
+  jpeg_quality: 84
+privacy:
+  redact_likely_identifiers: true
+  log_visible_text: false
+runtime:
+  output_root: output
+  overwrite: false

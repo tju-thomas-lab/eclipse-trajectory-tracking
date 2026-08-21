@@ -1,0 +1,1 @@
+"""Deterministic visual-change detection."""
