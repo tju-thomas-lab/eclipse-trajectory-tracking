@@ -21,6 +21,7 @@ modify patient records, or interact with treatment-delivery systems.
 - Extracts before/interaction/after evidence as content-addressed JPEG files shared by all records.
 - Emits deterministic `unknown_action` records rather than inventing user actions.
 - Creates local-VLM request records and can call an OpenAI-compatible server on localhost only.
+- Imports evidence-linked expert/offline-VLM bundles that may reference events and rolling windows.
 - Produces JSONL, a session manifest, synthesis placeholders, and a self-contained local timeline.
 - Resumes completed stages when the video and configuration hashes match.
 
@@ -76,6 +77,19 @@ uv run eclipse-trajectory infer-actions output/session_<hash> `
 uv run eclipse-trajectory synthesize output/session_<hash>
 ```
 
+An offline model or visual annotator can also return one validated JSON bundle. This is useful when
+small UI edits are visible in rolling-window evidence but do not create their own candidate event:
+
+```powershell
+uv run eclipse-trajectory import-annotations output/session_<hash> annotations.json
+```
+
+Each bundle action names its source event/window records, selected evidence roles, normalized VLM
+output, and optional structured state before/after. Importing is deterministic and rebuilds
+`model_outputs.jsonl`, `actions.jsonl`, episodes, executive summary, manifest, and timeline.
+The executive summary and limitations are bound to the exact normalized-action hash, so a later
+`synthesize` call preserves them only while the corresponding action set is still active.
+
 Only `localhost`, `127.0.0.1`, and `::1` endpoints are accepted. Raw responses are preserved in
 `model_outputs.jsonl`; normalized actions remain separate so provenance is auditable. The baseline
 prompt directs the model to return null/unknown when visual evidence is insufficient and to omit
@@ -88,6 +102,7 @@ eclipse-trajectory inspect INPUT_VIDEO
 eclipse-trajectory preprocess INPUT_VIDEO --config configs/offline.yaml
 eclipse-trajectory detect SESSION_DIRECTORY
 eclipse-trajectory infer-actions SESSION_DIRECTORY --backend deterministic
+eclipse-trajectory import-annotations SESSION_DIRECTORY ANNOTATION_BUNDLE
 eclipse-trajectory synthesize SESSION_DIRECTORY
 eclipse-trajectory review SESSION_DIRECTORY
 eclipse-trajectory export SESSION_DIRECTORY --format jsonl
@@ -106,4 +121,3 @@ uv run pytest
 uv run ruff check .
 uv run mypy src
 ```
-

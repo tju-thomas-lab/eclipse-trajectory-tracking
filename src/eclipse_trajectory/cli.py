@@ -10,6 +10,7 @@ import typer
 from eclipse_trajectory.config import load_config
 from eclipse_trajectory.export.timeline import write_timeline
 from eclipse_trajectory.ingest.video import inspect_video
+from eclipse_trajectory.models.imported_annotations import import_annotation_bundle
 from eclipse_trajectory.pipeline import deterministic_actions, run_local_inference, run_pipeline
 from eclipse_trajectory.schemas import ActionRecord, CandidateEvent
 from eclipse_trajectory.synthesis.hierarchy import synthesize_hierarchy
@@ -99,6 +100,16 @@ def infer_actions_command(
     else:
         raise typer.BadParameter("--backend must be deterministic or local-openai-compatible")
     typer.echo(json.dumps({"actions": len(actions), "backend": backend}))
+
+
+@app.command("import-annotations")
+def import_annotations_command(
+    session_directory: Annotated[Path, typer.Argument(exists=True, file_okay=False)],
+    annotation_bundle: Annotated[Path, typer.Argument(exists=True, dir_okay=False, readable=True)],
+) -> None:
+    """Import evidence-linked expert or offline-VLM outputs into standard action artifacts."""
+    actions = import_annotation_bundle(session_directory, annotation_bundle)
+    typer.echo(json.dumps({"actions": len(actions), "backend": "imported_local_vlm"}))
 
 
 @app.command("synthesize")

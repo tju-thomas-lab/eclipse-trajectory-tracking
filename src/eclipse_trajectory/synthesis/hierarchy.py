@@ -1,16 +1,39 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import Any
 
 from eclipse_trajectory.schemas import ActionRecord
-from eclipse_trajectory.util import atomic_write_json, atomic_write_jsonl, read_jsonl
+from eclipse_trajectory.util import (
+    atomic_write_json,
+    atomic_write_jsonl,
+    canonical_hash,
+    read_jsonl,
+)
 
 
-def synthesize_hierarchy(session_dir: Path) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+def synthesize_hierarchy(
+    session_dir: Path,
+    executive_summary_override: str | None = None,
+    additional_limitations: list[str] | None = None,
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     actions = [
         ActionRecord.model_validate(item) for item in read_jsonl(session_dir / "actions.jsonl")
     ]
+    override_path = session_dir / "synthesis_overrides.json"
+    if executive_summary_override is None and override_path.exists():
+        override = json.loads(override_path.read_text(encoding="utf-8"))
+        action_signature = canonical_hash([item.model_dump(mode="json") for item in actions])
+        if override.get("actions_signature") == action_signature:
+            candidate_summary = override.get("executive_summary")
+            if isinstance(candidate_summary, str):
+                executive_summary_override = candidate_summary
+            candidate_limitations = override.get("limitations")
+            if additional_limitations is None and isinstance(candidate_limitations, list):
+                additional_limitations = [
+                    item for item in candidate_limitations if isinstance(item, str)
+                ]
     episodes: list[dict[str, Any]] = []
     context_index = 1
     current: dict[str, Any] | None = None
@@ -57,7 +80,8 @@ def synthesize_hierarchy(session_dir: Path) -> tuple[list[dict[str, Any]], dict[
         "session_id": session_id,
         "anonymous_context_count": context_index if actions else 0,
         "episode_ids": [item["episode_id"] for item in episodes],
-        "executive_summary": " ".join(supported_summaries) if supported_summaries else None,
+        "executive_summary": executive_summary_override
+        or (" ".join(supported_summaries) if supported_summaries else None),
         "executive_summary_evidence_episode_ids": [
             item["episode_id"] for item in episodes if item["summary"]
         ],
@@ -65,7 +89,8 @@ def synthesize_hierarchy(session_dir: Path) -> tuple[list[dict[str, Any]], dict[
             "Clinical rationale is not inferred from screen changes.",
             "An absent executive summary means no local model supplied evidence-grounded summaries.",
             "Automated output requires qualified review before it can be treated as ground truth.",
-        ],
+        ]
+        + (additional_limitations or []),
     }
     atomic_write_jsonl(session_dir / "episodes.jsonl", episodes)
     atomic_write_json(session_dir / "session.json", session)

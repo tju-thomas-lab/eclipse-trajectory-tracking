@@ -29,6 +29,11 @@ PrimitiveActionType = Literal[
     "unknown_action",
     "no_action",
 ]
+EvidenceRole = Literal["before", "interaction", "after"]
+
+
+def _default_evidence_roles() -> list[EvidenceRole]:
+    return ["before", "interaction", "after"]
 
 
 class StrictModel(BaseModel):
@@ -69,7 +74,7 @@ class FrameMetric(StrictModel):
 
 
 class EvidenceRef(StrictModel):
-    role: Literal["before", "interaction", "after"]
+    role: EvidenceRole
     frame_id: str
     path: str
     sha256: str
@@ -138,7 +143,8 @@ class ActionRecord(StrictModel):
     schema_version: str = SCHEMA_VERSION
     session_id: str
     action_id: str
-    source_event_id: str
+    source_event_id: str | None = None
+    source_window_ids: list[str] = Field(default_factory=list)
     start_time_seconds: float
     end_time_seconds: float
     primitive_action: PrimitiveAction
@@ -179,6 +185,31 @@ class VLMNormalizedOutput(StrictModel):
     evidence_roles: list[Literal["before", "interaction", "after"]] = Field(default_factory=list)
     inference_sources: list[str] = Field(default_factory=list)
     clinical_intent: None = None
+
+
+class AnnotationSourceRef(StrictModel):
+    record_type: Literal["event", "window"]
+    record_id: str
+    evidence_roles: list[EvidenceRole] = Field(default_factory=_default_evidence_roles)
+
+
+class ImportedActionAnnotation(StrictModel):
+    annotation_id: str
+    start_time_seconds: float = Field(ge=0.0)
+    end_time_seconds: float = Field(ge=0.0)
+    source_refs: list[AnnotationSourceRef] = Field(min_length=1)
+    output: VLMNormalizedOutput
+    state_before: dict[str, Any] | None = None
+    state_after: dict[str, Any] | None = None
+
+
+class ImportedAnnotationBundle(StrictModel):
+    schema_version: str = SCHEMA_VERSION
+    session_id: str
+    generator_label: str
+    executive_summary: str
+    actions: list[ImportedActionAnnotation]
+    limitations: list[str] = Field(default_factory=list)
 
 
 class StageMarker(StrictModel):
